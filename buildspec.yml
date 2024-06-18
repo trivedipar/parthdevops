@@ -2,38 +2,46 @@ version: 0.2
 
 env:
   variables:
-    AWS_REGION_2: "us-east-2"
-    REACT_APP_API_SERVICE_URL: "http://http://flask-react-alb2-146681863.us-east-1.elb.amazonaws.com"
+    AWS_REGION: "us-east-2"
+    REACT_APP_API_SERVICE_URL: "http://flask-react-alb-146681863.us-east-2.elb.amazonaws.com"
+    DATABASE_URL: "http://flask-react-alb-82252855.us-east-2.elb.amazonaws.com/connectdb"
 
-phases:
-  install:
-    runtime-versions:
-      docker: 18
+phases: 
+  install: 
+    commands:
+      - echo "Installing Docker..."
+      - apt-get update
+      - apt-get install wget
+      # Download Docker Engine packages:
+      - wget --quiet -O "containerd.deb" "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/containerd.io_1.6.33-1_amd64.deb"
+      - wget --quiet -O "docker_ce_cli.deb" "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce-cli_26.1.4-1~ubuntu.22.04~jammy_amd64.deb"
+      - wget --quiet -O "docker_ce.deb" "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-ce_26.1.4-1~ubuntu.22.04~jammy_amd64.deb"
+      - wget --quiet -O "docker_buildx_plugin.deb" "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-buildx-plugin_0.14.1-1~ubuntu.22.04~jammy_amd64.deb"
+      - wget --quiet -O "docker_compose_plugin.deb" "https://download.docker.com/linux/ubuntu/dists/jammy/pool/stable/amd64/docker-compose-plugin_2.27.1-1~ubuntu.22.04~jammy_amd64.deb"
+      # Install the downloaded packages
+      - dpkg -i "containerd.deb"
+      - dpkg -i "docker_ce_cli.deb"
+      - dpkg -i "docker_ce.deb"
+      - dpkg -i "docker_buildx_plugin.deb"
+      - dpkg -i "docker_compose_plugin.deb"
+      # Remove the installer packages
+      - rm -f "containerd.deb" "docker_ce.deb" "docker_ce_cli.deb" "docker_buildx_plugin.deb" "docker_compose_plugin.deb"
+      # Check if Docker is installed and running
+      - echo "Running docker 'hello-world' to check if installation was successful..."
+      - docker run hello-world
   pre_build:
     commands:
-      - echo logging in to ecr...
-      - >
-        aws ecr get-login-password --region $AWS_REGION \
-          | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+      - echo "Attempting to login to AWS ECR..."
+      - aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
   build:
     commands:
-      - echo building dev images...
-      - docker-compose up -d --build
-      - echo building prod images...
-      - >
-        docker build \
-          -f be/Dockerfile \
-          -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-be:prod \
-          ./be
-      - >
-        docker build \
-          -f fe/Dockerfile \
-          -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-fe:prod \
-          --build-arg NODE_ENV=production \
-          --build-arg REACT_APP_API_SERVICE_URL=$REACT_APP_API_SERVICE_URL \
-          ./fe
+      - echo "Building images [prod]..."
+      - docker build --no-cache -f ./db/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-db:prod --build-arg DATABASE_URL=$DATABASE_URL ./db
+      - docker build --no-cache -f ./be/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-be:prod ./be
+      - docker build --no-cache -f ./fe/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-fe:prod --build-arg NODE_ENV=production --build-arg REACT_APP_API_SERVICE_URL=$REACT_APP_API_SERVICE_URL ./fe
   post_build:
     commands:
-    - echo pushing prod images to ecr...
-    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-be:prod
-    - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-fe:prod
+      - echo "Pushing [prod] images to AWS ECR..."
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-db:prod
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-be:prod
+      - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/twtr-fe:prod

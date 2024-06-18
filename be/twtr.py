@@ -1,21 +1,23 @@
 from flask import Flask, flash, request, jsonify, render_template, redirect, url_for, g, session, send_from_directory, abort
 from flask_cors import CORS
-from flask_api import status
+from http import HTTPStatus
 from datetime import date, datetime, timedelta
-from calendar import monthrange
-from dateutil.parser import parse
-import pytz
+from bson.objectid import ObjectId
 import os
-import sys
-import time
-import uuid
 import json
 import random
 import string
-import pathlib
-import io
+
+# Unused imports
+from dateutil.parser import parse
+from calendar import monthrange
+import time
+import pytz
+import sys
+import uuid
 from uuid import UUID
-from bson.objectid import ObjectId
+import io
+import pathlib
 
 # straight mongo access
 from pymongo import MongoClient
@@ -26,13 +28,14 @@ from pymongo import MongoClient
 # https://auth0.com/blog/refresh-tokens-what-are-they-and-when-to-use-them/
 #from flask.ext.bcrypt import Bcrypt
 from flask_bcrypt import Bcrypt
-from flask import g
 import jwt
 g = dict()
 
 # mongo
-#mongo_client = MongoClient('mongodb://localhost:27017/')
-mongo_client = MongoClient("mongodb+srv://admin:admin@tweets.8ugzv.mongodb.net/tweets?retryWrites=true&w=majority")
+print("Attempting to connect to MongoDB...")
+client_address = os.environ.get("DATABASE_URL", 'mongodb://db:27017/')
+mongo_client = MongoClient(client_address)
+#mongo_client = MongoClient("mongodb+srv://admin:admin@tweets.8ugzv.mongodb.net/tweets?retryWrites=true&w=majority")
 class MyMongo(object):
     def __init__(self, db_name):
         self.db_name = db_name
@@ -154,6 +157,7 @@ def doc():
 @app.route("/login", methods=["POST"])
 def login():
     try:
+        print("Attempting to login...")
         user = request.json['name']
         password = request.json['password']
         print('user:', user)
@@ -161,10 +165,10 @@ def login():
         print('users:', get_env_var('users'))
         if not user or not password:
             print('not user or not password!')
-            return jsonify(("Authentication is required and has failed!", status.HTTP_401_UNAUTHORIZED))
+            return jsonify(("Authentication is required and has failed!", HTTPStatus.UNAUTHORIZED))
         elif not user in get_env_var('users'):
             print('unknown user!')
-            return jsonify(("Unknown user!", status.HTTP_401_UNAUTHORIZED))
+            return jsonify(("Unknown user!", HTTPStatus.UNAUTHORIZED))
         else:
             # presumably we only store password hashes and compare passed pwd
             # with our stored hash. For simplicity, we store the full password
@@ -176,7 +180,7 @@ def login():
             a = datetime.now()
             if not bcrypt.check_password_hash(password_hash, password):
                 print('bcrypt.check_password_hash(password_hash, password) returned False!')
-                return jsonify(("Authentication is required and has failed!", status.HTTP_401_UNAUTHORIZED))
+                return jsonify(("Authentication is required and has failed!", HTTPStatus.UNAUTHORIZED))
             b = datetime.now()
             print('check_password took:', b - a)
             # debugging
@@ -205,10 +209,10 @@ def login():
             }
             #return response_object, 200
             #return response_object
-            return jsonify((response_object, status.HTTP_200_OK))
+            return jsonify((response_object, HTTPStatus.OK))
     except Exception as e:
         print('exception:', e)
-        return jsonify(("Authentication is required and has failed!", status.HTTP_401_UNAUTHORIZED))
+        return jsonify(("Authentication is required and has failed!", HTTPStatus.UNAUTHORIZED))
 
 
 # Returns an encoded userid. Requires both tokens. If access token expired 
@@ -220,25 +224,26 @@ def login():
 @app.route("/fastlogin", methods=["POST"])
 def fastlogin():
     try:
+        print("Attempting fastlogin...")
         access_token = request.json['access-token']
         refresh_token = request.json['refresh-token']
 
         if not access_token or not refresh_token:
-            return jsonify(("Missing token(s)!", status.HTTP_401_UNAUTHORIZED))
+            return jsonify(("Missing token(s)!", HTTPStatus.UNAUTHORIZED))
         else:
             try:
                 # first, with access token:
                 userid = decode_token(access_token)
 
                 if not userid or not userid in get_env_var('userids'):
-                    return jsonify(("User unknown, please login with username and password.", status.HTTP_401_UNAUTHORIZED))
+                    return jsonify(("User unknown, please login with username and password.", HTTPStatus.UNAUTHORIZED))
 
                 try:
                     # second, with refresh token
                     userid2 = decode_token(refresh_token)
 
                     if not userid2 or userid2 != userid:
-                        return jsonify(("User unknown, please login with username and password.", status.HTTP_401_UNAUTHORIZED))
+                        return jsonify(("User unknown, please login with username and password.", HTTPStatus.UNAUTHORIZED))
 
                     # issue a new access token, keep the same refresh token
                     access_token = encode_token(userid, "access")
@@ -246,28 +251,29 @@ def fastlogin():
                         "access_token": access_token.decode(),
                         "refresh_token": refresh_token,
                     }
-                    return jsonify((response_object, status.HTTP_200_OK))
+                    return jsonify((response_object, HTTPStatus.OK))
 
                 # refresh token failure: Need username/pwd login
                 except jwt.ExpiredSignatureError:
-                    return jsonify(("Lease expired. Please log in with username and password.", status.HTTP_401_UNAUTHORIZED))
+                    return jsonify(("Lease expired. Please log in with username and password.", HTTPStatus.UNAUTHORIZED))
                 
                 except jwt.InvalidTokenError:
-                    return jsonify(("Invalid token. Please log in with username and password.", status.HTTP_401_UNAUTHORIZED))
+                    return jsonify(("Invalid token. Please log in with username and password.", HTTPStatus.UNAUTHORIZED))
 
             # access token failure: Need at least fast login
             except jwt.ExpiredSignatureError:
-                return jsonify(("Signature expired. Please fast log in.", status.HTTP_401_UNAUTHORIZED))
+                return jsonify(("Signature expired. Please fast log in.", HTTPStatus.UNAUTHORIZED))
             
             except jwt.InvalidTokenError:
-                return jsonify(("Invalid token. Please fast log in.", status.HTTP_401_UNAUTHORIZED))
+                return jsonify(("Invalid token. Please fast log in.", HTTPStatus.UNAUTHORIZED))
 
     except:
-        return jsonify(("Missing token or other error. Please log in with username and password.", status.HTTP_401_UNAUTHORIZED))
+        return jsonify(("Missing token or other error. Please log in with username and password.", HTTPStatus.UNAUTHORIZED))
 
 
 def verify_token(token):
     try:
+        print("Attempting to verify tokens...")
         userid = decode_token(token)
         print("verify_token():", token, userid)
         print("verify_token():", get_env_var('userids'))
@@ -275,16 +281,16 @@ def verify_token(token):
 
         if userid is None or not userid in get_env_var('userids'):
             print("verify_token() returning False")
-            return False, jsonify(("User unknown!", status.HTTP_401_UNAUTHORIZED))
+            return False, jsonify(("User unknown!", HTTPStatus.UNAUTHORIZED))
         else:
             print("verify_token() returning True")
             return True, userid
 
     except jwt.ExpiredSignatureError:
-        return False, jsonify(("Signature expired. Please log in.", status.HTTP_401_UNAUTHORIZED))
+        return False, jsonify(("Signature expired. Please log in.", HTTPStatus.UNAUTHORIZED))
 
     except jwt.InvalidTokenError:
-        return False, jsonify(("Invalid token. Please log in.", status.HTTP_401_UNAUTHORIZED))
+        return False, jsonify(("Invalid token. Please log in.", HTTPStatus.UNAUTHORIZED))
 
 
 ################
@@ -303,7 +309,8 @@ def atlas_connect():
     # });
 
     # Python
-    client = pymongo.MongoClient("mongodb+srv://admin:<password>@tweets.8ugzv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
+    client = MongoClient('mongodb://localhost:27017/')
+    # client = pymongo.MongoClient("mongodb+srv://admin:<password>@tweets.8ugzv.mongodb.net/myFirstDatabase?retryWrites=true&w=majority")
     db = client.test
 
 
@@ -343,7 +350,7 @@ def update_one(r):
                 {"_id" : r['_id']},
                 {"$set": r},
                 upsert=True)
-            printg ("...update_one() to mongo acknowledged:", result.modified_count)
+            print("...update_one() to mongo acknowledged:", result.modified_count)
         except Exception as e:
             print(e)
 
@@ -436,15 +443,15 @@ def add_tweet():
     private = request.json['private']
     pic = request.json['pic']
 
-    access_token = request.json['access-token']
-    print("access_token:", access_token)
-    permission = verify_token(access_token)
-    if not permission[0]: 
-        print("tweet submission denied due to invalid token!")
-        print(permission[1])
-        return permission[1]
-    else:
-        print('access token accepted!')
+    # access_token = request.json['access-token']
+    # print("access_token:", access_token)
+    # permission = verify_token(access_token)
+    # if not permission[0]: 
+    #     print("tweet submission denied due to invalid token!")
+    #     print(permission[1])
+    #     return permission[1]
+    # else:
+    #     print('access token accepted!')
 
     tweet = dict(user=user, description=description, private=private,
                 upvote=0, date=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -662,6 +669,7 @@ def mock_tweets():
 
     # done!
     print("@@@ mock-tweets(): done!")
+    print(json_data_all)
     return jsonify(json_data_all)
 
 
@@ -671,8 +679,28 @@ def mock_tweets():
 
 # This runs once before the first single request
 # Used to bootstrap our collections
-@app.before_first_request
-def before_first_request_func():
+
+##################
+# DEPRECATED 
+# @app.before_first_request
+# @app.before_first_request
+# def before_first_request_func():
+#     set_env_var()
+#     applyCollectionLevelUpdates()
+##################
+
+initialized = False 
+def initialize(): 
+    global initialized 
+    if not initialized: 
+        set_env_var() 
+        applyCollectionLevelUpdates() 
+        initialized = True
+        
+##################
+# INSTEAD USE THIS
+##################
+with app.app_context():
     set_env_var()
     applyCollectionLevelUpdates()
 
