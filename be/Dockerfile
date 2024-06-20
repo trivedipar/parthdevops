@@ -1,15 +1,26 @@
-#FROM python:3.6.6-alpine
-#FROM python:3-slim
+#########
+# FINAL #
+#########
+
+# Base image
 FROM python:3.9-slim-buster
+
+# Set working directory
 WORKDIR /app
-ADD . .
-#RUN apk update
+
+# Update underlying packages
 RUN apt-get update
+
+# Copy the Backend source code to /app
+COPY ./ /app
+
+# Install Python dependencies
 RUN pip3 install -r requirements.txt
 
-# run as non-root user
-RUN adduser --disabled-password myuser
-USER myuser
+# Create a non-root user and run commands using 
+# the non-root user
+RUN adduser --disabled-password dummyuser
+USER dummyuser
 
 # Set Flask to run in production mode
 # To run Flask in development mode, 
@@ -20,8 +31,15 @@ ENV FLASK_ENV=production
 ARG DATABASE_URL
 ENV DATABASE_URL $DATABASE_URL
 
-
-# run gunicorn with 3 threads listening on port 5000.
+# Remember to map external port to the container's 
+# port 5000
 EXPOSE 5000
-# CMD gunicorn --threads=3 --bind 0.0.0.0:5000 wsgi:app
-CMD ['python3', 'twtr.py']
+
+# Start Gunicorn server with 3 threads listening 
+# on port 5000 and set target application to 
+# wsgi.py file
+
+# There seems to be some issues with gunicorn 
+# not being visible in the PATH variable
+# Try running the app via python3
+CMD ["python3", "twtr.py"]
