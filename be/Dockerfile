@@ -23,4 +23,5 @@ ENV DATABASE_URL $DATABASE_URL
 
 # run gunicorn with 3 threads listening on port 5000.
 EXPOSE 5000
-CMD gunicorn --threads=3 --bind 0.0.0.0:5000 wsgi:app
+# CMD gunicorn --threads=3 --bind 0.0.0.0:5000 wsgi:app
+CMD ['python3', 'twtr.py']
