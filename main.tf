@@ -91,7 +91,7 @@ resource "aws_security_group" "ecs_sg" {
 
 # Load Balancer
 resource "aws_lb" "frontend" {
-  name               = "frontend-alb"
+  name               = "frontend-alb-unique"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.ecs_sg.id]
@@ -100,12 +100,12 @@ resource "aws_lb" "frontend" {
   enable_deletion_protection = false
 
   tags = {
-    Name = "frontend-lb"
+    Name = "frontend-lb-unique"
   }
 }
 
 resource "aws_lb" "backend" {
-  name               = "backend-alb"
+  name               = "backend-alb-unique"
   internal           = false
   load_balancer_type = "application"
   security_groups    = [aws_security_group.ecs_sg.id]
@@ -114,30 +114,30 @@ resource "aws_lb" "backend" {
   enable_deletion_protection = false
 
   tags = {
-    Name = "backend-lb"
+    Name = "backend-lb-unique"
   }
 }
 
 # Target Groups
 resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg"
+  name     = "frontend-tg-unique"
   port     = 80
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 
   tags = {
-    Name = "frontend-tg"
+    Name = "frontend-tg-unique"
   }
 }
 
 resource "aws_lb_target_group" "backend" {
-  name     = "backend-tg"
+  name     = "backend-tg-unique"
   port     = 5000
   protocol = "HTTP"
   vpc_id   = aws_vpc.main.id
 
   tags = {
-    Name = "backend-tg"
+    Name = "backend-tg-unique"
   }
 }
 
@@ -175,7 +175,7 @@ resource "aws_ecs_cluster" "cluster" {
 
 # IAM Role for ECS Task Execution
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole"
+  name = "ecsTaskExecutionRole-unique"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -191,7 +191,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 
   tags = {
-    Name = "ecs-task-execution-role"
+    Name = "ecs-task-execution-role-unique"
   }
 }
 
