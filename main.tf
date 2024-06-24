@@ -2,55 +2,146 @@ provider "aws" {
   region = var.aws_region
 }
 
-module "vpc" {
-  source = "terraform-aws-modules/vpc/aws"
-  version = "3.18.1"  # Update to a more recent version
-
-  name = "my-vpc"
-  cidr = "10.0.0.0/16"
-
-  azs             = ["us-east-2a", "us-east-2b", "us-east-2c"]
-  private_subnets = ["10.0.1.0/24", "10.0.2.0/24", "10.0.3.0/24"]
-  public_subnets  = ["10.0.101.0/24", "10.0.102.0/24", "10.0.103.0/24"]
-
-  enable_nat_gateway = true
+# VPC
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
   enable_dns_hostnames = true
+
+  tags = {
+    Name = "main-vpc"
+  }
 }
 
+# Public Subnets
+resource "aws_subnet" "public" {
+  count             = 3
+  vpc_id            = aws_vpc.main.id
+  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  map_public_ip_on_launch = true
+
+  tags = {
+    Name = "public-subnet-${count.index + 1}"
+  }
+}
+
+# Private Subnets
+resource "aws_subnet" "private" {
+  count      = 3
+  vpc_id     = aws_vpc.main.id
+  cidr_block = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 100)
+
+  tags = {
+    Name = "private-subnet-${count.index + 1}"
+  }
+}
+
+# Internet Gateway
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+
+  tags = {
+    Name = "main-igw"
+  }
+}
+
+# Route Table
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.igw.id
+  }
+
+  tags = {
+    Name = "public-route-table"
+  }
+}
+
+# Associate Route Table with Public Subnets
+resource "aws_route_table_association" "a" {
+  count          = 3
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+# Security Group
+resource "aws_security_group" "ecs_sg" {
+  vpc_id = aws_vpc.main.id
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "ecs-security-group"
+  }
+}
+
+# Load Balancer
 resource "aws_lb" "frontend" {
   name               = "frontend-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [module.vpc.default_security_group_id]
-  subnets            = module.vpc.public_subnets
+  security_groups    = [aws_security_group.ecs_sg.id]
+  subnets            = aws_subnet.public[*].id
 
   enable_deletion_protection = false
+
+  tags = {
+    Name = "frontend-lb"
+  }
 }
 
 resource "aws_lb" "backend" {
   name               = "backend-alb"
   internal           = false
   load_balancer_type = "application"
-  security_groups    = [module.vpc.default_security_group_id]
-  subnets            = module.vpc.public_subnets
+  security_groups    = [aws_security_group.ecs_sg.id]
+  subnets            = aws_subnet.public[*].id
 
   enable_deletion_protection = false
+
+  tags = {
+    Name = "backend-lb"
+  }
 }
 
+# Target Groups
 resource "aws_lb_target_group" "frontend" {
   name     = "frontend-tg"
   port     = 80
   protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
+  vpc_id   = aws_vpc.main.id
+
+  tags = {
+    Name = "frontend-tg"
+  }
 }
 
 resource "aws_lb_target_group" "backend" {
   name     = "backend-tg"
   port     = 5000
   protocol = "HTTP"
-  vpc_id   = module.vpc.vpc_id
+  vpc_id   = aws_vpc.main.id
+
+  tags = {
+    Name = "backend-tg"
+  }
 }
 
+# Listeners
 resource "aws_lb_listener" "frontend" {
   load_balancer_arn = aws_lb.frontend.arn
   port              = "80"
@@ -73,6 +164,42 @@ resource "aws_lb_listener" "backend" {
   }
 }
 
+# ECS Cluster
+resource "aws_ecs_cluster" "cluster" {
+  name = "my-ecs-cluster"
+
+  tags = {
+    Name = "ecs-cluster"
+  }
+}
+
+# IAM Role for ECS Task Execution
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "ecsTaskExecutionRole"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+        Action = "sts:AssumeRole"
+      }
+    ]
+  })
+
+  tags = {
+    Name = "ecs-task-execution-role"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
 data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
@@ -82,6 +209,7 @@ data "template_file" "container_definitions" {
   }
 }
 
+# ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
   family                   = "my-ecs-task"
   container_definitions    = data.template_file.container_definitions.rendered
@@ -92,6 +220,7 @@ resource "aws_ecs_task_definition" "task" {
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
 
+# ECS Service
 resource "aws_ecs_service" "service" {
   name            = "my-ecs-service"
   cluster         = aws_ecs_cluster.cluster.id
@@ -99,8 +228,8 @@ resource "aws_ecs_service" "service" {
   desired_count   = 2
 
   network_configuration {
-    subnets         = module.vpc.private_subnets
-    security_groups = [module.vpc.default_security_group_id]
+    subnets         = aws_subnet.private[*].id
+    security_groups = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
