@@ -13,11 +13,12 @@ resource "aws_vpc" "main" {
   }
 }
 
-# Public Subnets
+# Public Subnets - ensure each is in a different AZ
 resource "aws_subnet" "public" {
-  count             = 3
-  vpc_id            = aws_vpc.main.id
-  cidr_block        = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  count = 3
+  vpc_id = aws_vpc.main.id
+  cidr_block = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index)
+  availability_zone = element(["us-east-2a", "us-east-2b", "us-east-2c"], count.index)
   map_public_ip_on_launch = true
 
   tags = {
@@ -25,11 +26,12 @@ resource "aws_subnet" "public" {
   }
 }
 
-# Private Subnets
+# Private Subnets - ensure each is in a different AZ
 resource "aws_subnet" "private" {
-  count      = 3
-  vpc_id     = aws_vpc.main.id
+  count = 3
+  vpc_id = aws_vpc.main.id
   cidr_block = cidrsubnet(aws_vpc.main.cidr_block, 8, count.index + 100)
+  availability_zone = element(["us-east-2a", "us-east-2b", "us-east-2c"], count.index)
 
   tags = {
     Name = "private-subnet-${count.index + 1}"
@@ -61,8 +63,8 @@ resource "aws_route_table" "public" {
 
 # Associate Route Table with Public Subnets
 resource "aws_route_table_association" "a" {
-  count          = 3
-  subnet_id      = aws_subnet.public[count.index].id
+  count = 3
+  subnet_id = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
 
@@ -71,16 +73,16 @@ resource "aws_security_group" "ecs_sg" {
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
+    from_port = 80
+    to_port = 80
+    protocol = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
+    from_port = 0
+    to_port = 0
+    protocol = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -91,75 +93,75 @@ resource "aws_security_group" "ecs_sg" {
 
 # Load Balancer
 resource "aws_lb" "frontend" {
-  name               = "frontend-alb-unique"
-  internal           = false
+  name = "frontend-alb-unique-2"
+  internal = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.ecs_sg.id]
-  subnets            = aws_subnet.public[*].id
+  security_groups = [aws_security_group.ecs_sg.id]
+  subnets = aws_subnet.public[*].id
 
   enable_deletion_protection = false
 
   tags = {
-    Name = "frontend-lb-unique"
+    Name = "frontend-lb-unique-2"
   }
 }
 
 resource "aws_lb" "backend" {
-  name               = "backend-alb-unique"
-  internal           = false
+  name = "backend-alb-unique-2"
+  internal = false
   load_balancer_type = "application"
-  security_groups    = [aws_security_group.ecs_sg.id]
-  subnets            = aws_subnet.public[*].id
+  security_groups = [aws_security_group.ecs_sg.id]
+  subnets = aws_subnet.public[*].id
 
   enable_deletion_protection = false
 
   tags = {
-    Name = "backend-lb-unique"
+    Name = "backend-lb-unique-2"
   }
 }
 
 # Target Groups
 resource "aws_lb_target_group" "frontend" {
-  name     = "frontend-tg-unique"
-  port     = 80
+  name = "frontend-tg-unique-2"
+  port = 80
   protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "frontend-tg-unique"
+    Name = "frontend-tg-unique-2"
   }
 }
 
 resource "aws_lb_target_group" "backend" {
-  name     = "backend-tg-unique"
-  port     = 5000
+  name = "backend-tg-unique-2"
+  port = 5000
   protocol = "HTTP"
-  vpc_id   = aws_vpc.main.id
+  vpc_id = aws_vpc.main.id
 
   tags = {
-    Name = "backend-tg-unique"
+    Name = "backend-tg-unique-2"
   }
 }
 
 # Listeners
 resource "aws_lb_listener" "frontend" {
   load_balancer_arn = aws_lb.frontend.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port = "80"
+  protocol = "HTTP"
 
   default_action {
-    type             = "forward"
+    type = "forward"
     target_group_arn = aws_lb_target_group.frontend.arn
   }
 }
 
 resource "aws_lb_listener" "backend" {
   load_balancer_arn = aws_lb.backend.arn
-  port              = "80"
-  protocol          = "HTTP"
+  port = "80"
+  protocol = "HTTP"
 
   default_action {
-    type             = "forward"
+    type = "forward"
     target_group_arn = aws_lb_target_group.backend.arn
   }
 }
@@ -175,7 +177,7 @@ resource "aws_ecs_cluster" "cluster" {
 
 # IAM Role for ECS Task Execution
 resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole-unique"
+  name = "ecsTaskExecutionRole-unique-2"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -191,12 +193,12 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   })
 
   tags = {
-    Name = "ecs-task-execution-role-unique"
+    Name = "ecs-task-execution-role-unique-2"
   }
 }
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role       = aws_iam_role.ecs_task_execution_role.name
+  role = aws_iam_role.ecs_task_execution_role.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
@@ -204,44 +206,44 @@ data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
   vars = {
-    react_app_api_service_url  = "http://${aws_lb.frontend.dns_name}"
-    database_url               = "mongodb://${aws_lb.backend.dns_name}:27017/"
+    react_app_api_service_url = "http://${aws_lb.frontend.dns_name}"
+    database_url = "mongodb://${aws_lb.backend.dns_name}:27017/"
   }
 }
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
-  family                   = "my-ecs-task"
-  container_definitions    = data.template_file.container_definitions.rendered
+  family = "my-ecs-task"
+  container_definitions = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "512"  # Increase task CPU
-  memory                   = "1024"  # Increase task memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  network_mode = "awsvpc"
+  cpu = "512"  # Increase task CPU
+  memory = "1024"  # Increase task memory
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 }
 
 # ECS Service
 resource "aws_ecs_service" "service" {
-  name            = "my-ecs-service"
-  cluster         = aws_ecs_cluster.cluster.id
+  name = "my-ecs-service"
+  cluster = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
-  desired_count   = 2
+  desired_count = 2
 
   network_configuration {
-    subnets         = aws_subnet.private[*].id
+    subnets = aws_subnet.private[*].id
     security_groups = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.frontend.arn
-    container_name   = "frontend"
-    container_port   = 80
+    container_name = "frontend"
+    container_port = 80
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 5000
+    container_name = "backend"
+    container_port = 5000
   }
 }
 
