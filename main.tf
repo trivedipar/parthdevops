@@ -215,8 +215,8 @@ resource "aws_ecs_task_definition" "task" {
   container_definitions    = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "256"
-  memory                   = "512"
+  cpu                      = "512"  # Increase task CPU
+  memory                   = "1024"  # Increase task memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
 
