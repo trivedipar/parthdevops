@@ -126,6 +126,7 @@ resource "aws_lb_target_group" "frontend" {
   port = 80
   protocol = "HTTP"
   vpc_id = aws_vpc.main.id
+  target_type = "ip"  # Set target type to IP
 
   tags = {
     Name = "frontend-tg-unique-2"
@@ -137,6 +138,7 @@ resource "aws_lb_target_group" "backend" {
   port = 5000
   protocol = "HTTP"
   vpc_id = aws_vpc.main.id
+  target_type = "ip"  # Set target type to IP
 
   tags = {
     Name = "backend-tg-unique-2"
