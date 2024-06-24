@@ -39,12 +39,14 @@ jobs:
         id: frontend-url
         run: |
           echo "frontend_url=$(terraform output -raw frontend_url)" >> $GITHUB_ENV
+          echo "::set-output name=frontend_url::$(terraform output -raw frontend_url)"
         working-directory: .
 
       - name: Get backend URL
         id: backend-url
         run: |
           echo "backend_url=$(terraform output -raw backend_url)" >> $GITHUB_ENV
+          echo "::set-output name=backend_url::$(terraform output -raw backend_url)"
         working-directory: .
 
   build-and-deploy:
@@ -53,8 +55,8 @@ jobs:
 
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      REACT_APP_API_SERVICE_URL: ${{ env.frontend_url }}
-      DATABASE_URL: ${{ env.backend_url }}
+      REACT_APP_API_SERVICE_URL: ${{ needs.terraform.outputs.frontend_url }}
+      DATABASE_URL: ${{ needs.terraform.outputs.backend_url }}
 
     steps:
       - name: Checkout code
