@@ -3,7 +3,8 @@ name: Deploy to AWS
 on:
   push:
     branches:
-      - main
+      - deploy  # Only triggers for the deploy branch
+  workflow_dispatch:  # Allows manual triggering
 
 jobs:
   terraform:
