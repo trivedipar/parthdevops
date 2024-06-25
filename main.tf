@@ -270,7 +270,7 @@ resource "aws_ecs_service" "service" {
   }
 }
 
-output "frontend_url" {
+output "REACT_APP_API_SERVICE_URL" {
   value = aws_lb.frontend.dns_name
 }
 
