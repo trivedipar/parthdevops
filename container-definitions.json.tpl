@@ -29,12 +29,6 @@
         "containerPort": 5000,
         "hostPort": 5000
       }
-    ],
-    "environment": [
-      {
-        "name": "DATABASE_URL",
-        "value": "${database_url}"
-      }
     ]
   }
 ]
