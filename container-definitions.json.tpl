@@ -14,7 +14,7 @@
     "environment": [
       {
         "name": "REACT_APP_API_SERVICE_URL",
-        "value": "${react_app_api_service_url}"
+        "value": "${REACT_APP_API_SERVICE_URL}"
       }
     ]
   },

@@ -14,7 +14,7 @@ const AuthPage = () => {
     setErrorMessage('');
     try {
       const endpoint = isRegistering ? 'register' : 'login';
-      const response = await axios.post(`http://localhost:5000/${endpoint}`, {
+      const response = await axios.post(`${apiUrl}/${endpoint}`, {
         username,
         password
       });

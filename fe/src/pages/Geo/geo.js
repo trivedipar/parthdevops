@@ -3,6 +3,8 @@ import { Map, Marker } from "pigeon-maps";
 import { withStyles } from "@material-ui/core/styles";
 import useGeolocation from "./useGeolocation";
 
+const apiUrl = process.env.REACT_APP_API_URL;
+
 const styles = (theme) => ({
   root: {
     display: "flex",
@@ -46,12 +48,12 @@ function GeoLocation(props) {
           setSpeed(speed);
 
           try {
-            fetch('http://localhost:5000/get_user_info')
+            fetch(`${apiUrl}/get_user_info`)
             .then(response => response.json())
             .then(data => {
               if (data.isLoggedIn) {
                 setUserPrime(data.username);
-                fetch("http://localhost:5000/set-location", {
+                fetch(`${apiUrl}/set-location`, {
                   method: "POST",
                   headers: {
                     "Content-Type": "application/json",
@@ -94,7 +96,7 @@ function GeoLocation(props) {
           return {};
         }
 
-        const response = await fetch(`http://localhost:5000/get-location/${userId}`);
+        const response = await fetch(`${apiUrl}/get-location/${userId}`);
         const data = await response.json();
         return { [userId]: data };
       } catch (error) {
