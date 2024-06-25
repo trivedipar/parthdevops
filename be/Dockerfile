@@ -42,4 +42,4 @@ EXPOSE 5000
 # There seems to be some issues with gunicorn 
 # not being visible in the PATH variable
 # Try running the app via python3
-CMD ["python3", "twtr.py"]
+CMD ["python3", "app.py"]

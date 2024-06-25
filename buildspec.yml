@@ -3,8 +3,8 @@ version: 0.2
 env:
   variables:
     AWS_REGION: "us-east-2"
-    REACT_APP_API_SERVICE_URL: "http://flask-react-alb-1139859006.us-east-2.elb.amazonaws.com"
-    DATABASE_URL: "mongodb://flask-react-nlb-89f5f2b2a7e0af4b.elb.us-east-2.amazonaws.com:27017/"
+    REACT_APP_API_SERVICE_URL: "http://frontendalb-652363874.us-east-2.elb.amazonaws.com"
+    DATABASE_URL: "mongodb://mongonlb-b6fff18a0b642acf.elb.us-east-2.amazonaws.com:27017/"
 
 phases: 
   install: 
@@ -39,9 +39,11 @@ phases:
       - docker build --no-cache -f ./db/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/mongodb:prod --build-arg DATABASE_URL=$DATABASE_URL ./db
       - docker build --no-cache -f ./be/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/backend:prod ./be
       - docker build --no-cache -f ./fe/Dockerfile -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/frontend:prod --build-arg NODE_ENV=production --build-arg REACT_APP_API_SERVICE_URL=$REACT_APP_API_SERVICE_URL ./fe
+
   post_build:
     commands:
       - echo "Pushing [prod] images to AWS ECR..."
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/mongodb:prod
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/backend:prod
       - docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/frontend:prod
+     
