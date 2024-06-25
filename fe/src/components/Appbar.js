@@ -34,6 +34,8 @@ import PasswordReset from "../pages/PasswordReset/PasswordReset";
 import PasswordChange from "../pages/PasswordChange/PasswordChange";
 import THome from "../pages/Tweets/Home";
 import Compose from "../pages/Compose/Compose";
+import Geo from "../pages/Geo/geo";
+import Auth from "../pages/Auth/Auth";
 
 const drawerWidth = 240;
 const history = createBrowserHistory();
@@ -223,13 +225,29 @@ export default function Dashboard() {
           {/* Left pane menu items */}
           <List>
 
-            {/* Tweets menu item*/}
-            <ListItem button component={Link} to="/tweets" onClick={onItemClick('Tweets')}>
+           
+
+            {/* Orders menu item */}
+<ListItem button component={Link} to="/geo" onClick={onItemClick('Geo')}>
+  <ListItemIcon>
+    <DashboardIcon />
+  </ListItemIcon>
+  <ListItemText primary="Geo" />
+  { title === 'Orders' && 
+    <ListItemIcon>
+      <IconButton onClick={handleDrawerCollapsed} visible={title}>
+        <ChevronLeftIcon />
+      </IconButton>
+    </ListItemIcon>
+  }
+            </ListItem>
+             {/* Tweets menu item*/}
+             <ListItem button component={Link} to="/Auth" onClick={onItemClick('Auth')}>
               <ListItemIcon>
                 <DashboardIcon />
               </ListItemIcon>
-              <ListItemText primary="Tweets" />
-              { title === 'Tweets' && 
+              <ListItemText primary="Auth" />
+              { title === 'Auth' && 
                 <ListItemIcon>
                   <IconButton onClick={handleDrawerCollapsed}>
                     <ChevronLeftIcon />
@@ -238,35 +256,10 @@ export default function Dashboard() {
               }
             </ListItem>
 
-            {/* Compose menu item*/}
-            <ListItem button component={Link} to="/compose" onClick={onItemClick('Compose')}>
-              <ListItemIcon>
-                <DashboardIcon />
-              </ListItemIcon>
-              <ListItemText primary="Compose" />
-              { title === 'Compose' && 
-                <ListItemIcon>
-                  <IconButton onClick={handleDrawerCollapsed}>
-                    <ChevronLeftIcon />
-                  </IconButton>
-                </ListItemIcon>
-              }
-            </ListItem>
 
-            {/* SignUp menu item */}
-            <ListItem button component={Link} to="/signin" onClick={onItemClick('Sign In')}>
-              <ListItemIcon>
-                <LayersIcon />
-              </ListItemIcon>
-              <ListItemText primary="Sign In" />
-              { title === 'Sign In' && 
-                <ListItemIcon>
-                  <IconButton onClick={handleDrawerCollapsed}>
-                    <ChevronLeftIcon />
-                  </IconButton>
-                </ListItemIcon>
-              }
-            </ListItem>
+           
+
+           
           </List>
         </Drawer>
 
@@ -279,6 +272,8 @@ export default function Dashboard() {
           <Route path="/compose" component={Compose} />
           <Route path="/signin" component={SignIn} />
           <Route path="/signup" component={SignUp} />
+          <Route path="/geo" component={Geo} />
+          <Route path="/Auth" component={Auth} />
           <Route path="/password_reset" component={PasswordReset} />
           <Route path="/password_change" component={PasswordChange} />
           {/* <Route path="/activity"><ActivityHome /></Route> */}

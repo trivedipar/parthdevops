@@ -104,39 +104,41 @@ const SignIn = () => {
   // access and refresh tokens in return. These
   // tokens encode the userid
   function handleSubmit(event) {
-    event.preventDefault()
+    event.preventDefault();
 
     //console.log(username);
     //console.log(password);
     const paramdict = {
-      'name': username,
-      'password': password
-    }
+      name: username,
+      password: password,
+    };
     const config = {
-      method: 'POST',
+      method: "POST",
       headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
+        Accept: "application/json",
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(paramdict)
-    }
+      body: JSON.stringify(paramdict),
+    };
     console.log("sending out:");
     console.log(paramdict);
 
-    console.log("Signin.js: fetching from " + `${process.env.REACT_APP_API_SERVICE_URL}/login`)
+    console.log(
+      "Signin.js: fetching from " +
+        `${process.env.REACT_APP_API_SERVICE_URL}/login`
+    );
     // verify user/pwd, get encoded userid as access and refresh tokens in return
-    //fetch("http://localhost:5000/login", config)
     //fetch(`${process.env.REACT_APP_BE_NETWORK}:${process.env.REACT_APP_BE_PORT}/login`, config)
-    fetch(`login`, config)
-      .then(response => response.json())
-      .then(data => {
-
+    // fetch(`login`, config)
+    fetch("http://localhost:5000/login", config)
+      .then((response) => response.json())
+      .then((data) => {
         // save to local storage
-        console.log("received these keys in return:")
+        console.log("received these keys in return:");
         console.log(data);
         console.log(data[0].access_token);
         console.log(data[0].refresh_token);
-        console.log('---');
+        console.log("---");
         saveAuthorisation({
           access: data[0].access_token,
           refresh: data[0].refresh_token,
@@ -145,7 +147,7 @@ const SignIn = () => {
         // back to landing page!
         history.push("/");
       })
-      .catch( (err) => {
+      .catch((err) => {
         alert(err);
         console.log(err);
       });
