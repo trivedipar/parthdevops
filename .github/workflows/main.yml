@@ -36,9 +36,9 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Get frontend URL
-        id: frontend-url
+        id: REACT_APP_API_SERVICE_URL
         run: |
-          echo "frontend_url=$(terraform output -raw frontend_url)" >> $GITHUB_ENV
+          echo "frontend_url=$(terraform output -raw REACT_APP_API_SERVICE_URL)" >> $GITHUB_ENV
         working-directory: .
 
       - name: Get backend URL
@@ -53,7 +53,8 @@ jobs:
 
     env:
       AWS_REGION: ${{ secrets.AWS_REGION }}
-      REACT_APP_API_SERVICE_URL: ${{ env.frontend_url }}
+      REACT_APP_API_SERVICE_URL: ${{ env.REACT_APP_API_SERVICE_URL }}
+      #REACT_APP_API_SERVICE_URL: ${{ env.frontend_url }}
       DATABASE_URL: ${{ env.backend_url }}
 
     steps:
@@ -63,9 +64,9 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Build and deploy Redis image
-        run: |
-          docker run -d -p 6379:6379 --name redis-redisjson redislabs/rejson:latest
+      #- name: Build and deploy Redis image
+      #  run: |
+      #    docker run -d -p 6379:6379 --name redis-redisjson redislabs/rejson:latest
 
       - name: Build and deploy Backend image
         env:
