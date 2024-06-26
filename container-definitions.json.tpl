@@ -38,6 +38,20 @@
         "hostPort": 5000
       }
     ],
+    "environment": [
+      {
+        "name": "REDIS_HOST",
+        "value": "redis-19369.c11.us-east-1-3.ec2.redns.redis-cloud.com"
+      },
+      {
+        "name": "REDIS_PORT",
+        "value": "19369"
+      },
+      {
+        "name": "REDIS_PASSWORD",
+        "value": "iwIGMW4rywGlc4sNNA95UQcUBuC6auwW"
+      }
+    ],
     "logConfiguration": {
       "logDriver": "awslogs",
       "options": {
