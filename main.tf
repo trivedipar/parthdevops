@@ -226,9 +226,65 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   }
 }
 
+resource "aws_iam_policy" "ecs_task_execution_policy" {
+  name = "ecsTaskExecutionPolicy-unique-2"
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Effect = "Allow",
+        Action = [
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "ecr:BatchCheckLayerAvailability"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "logs:CreateLogStream",
+          "logs:PutLogEvents"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ecs:StartTelemetrySession",
+          "ecs:CreateCluster",
+          "ecs:DeregisterContainerInstance",
+          "ecs:RegisterContainerInstance",
+          "ecs:Submit*",
+          "ecs:Poll",
+          "ecs:UpdateContainerInstancesState",
+          "ecs:SubmitContainerStateChange",
+          "ecs:DiscoverPollEndpoint"
+        ],
+        Resource = "*"
+      },
+      {
+        Effect = "Allow",
+        Action = [
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:Describe*",
+          "ec2:AttachNetworkInterface",
+          "ec2:CreateNetworkInterface",
+          "ec2:DeleteNetworkInterface",
+          "ec2:DetachNetworkInterface",
+          "ec2:ModifyNetworkInterfaceAttribute",
+          "ec2:AssignPrivateIpAddresses",
+          "ec2:UnassignPrivateIpAddresses"
+        ],
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
-  role = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = aws_iam_policy.ecs_task_execution_policy.arn
 }
 
 resource "aws_cloudwatch_log_group" "frontend_log_group" {
@@ -241,60 +297,66 @@ resource "aws_cloudwatch_log_group" "backend_log_group" {
   retention_in_days = 7
 }
 
-# Create ECR repositories
-resource "aws_ecr_repository" "frontend" {
-  name = "frontend"
-}
-
-resource "aws_ecr_repository" "backend" {
-  name = "backend"
-}
-
 data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
   vars = {
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
-    aws_region = var.aws_region
-    aws_account_id = var.aws_account_id
   }
 }
 
-
 # ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
-  family = "my-ecs-task"
-  container_definitions = data.template_file.container_definitions.rendered
+  family                   = "my-ecs-task"
+  container_definitions    = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
-  network_mode = "awsvpc"
-  cpu = "512"  # Increase task CPU
-  memory = "1024"  # Increase task memory
-  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  network_mode             = "awsvpc"
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
 
 # ECS Service
 resource "aws_ecs_service" "service" {
-  name = "my-ecs-service"
-  cluster = aws_ecs_cluster.cluster.id
+  name            = "my-ecs-service"
+  cluster         = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
-  desired_count = 2
-  launch_type = "FARGATE"  # Ensure Fargate launch type
+  desired_count   = 2
+  launch_type     = "FARGATE"
 
   network_configuration {
-    subnets = aws_subnet.private[*].id
-    security_groups = [aws_security_group.ecs_sg.id]
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs_sg.id]
+    assign_public_ip = true
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.frontend.arn
-    container_name = "frontend"
-    container_port = 80
+    container_name   = "frontend"
+    container_port   = 80
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
-    container_name = "backend"
-    container_port = 5000
+    container_name   = "backend"
+    container_port   = 5000
+  }
+}
+
+# ECR Repository
+resource "aws_ecr_repository" "frontend" {
+  name = "frontend"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+}
+
+resource "aws_ecr_repository" "backend" {
+  name = "backend"
+
+  image_scanning_configuration {
+    scan_on_push = true
   }
 }
 
