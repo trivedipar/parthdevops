@@ -231,6 +231,16 @@ resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
+resource "aws_cloudwatch_log_group" "frontend_log_group" {
+  name = "/ecs/frontend"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "backend_log_group" {
+  name = "/ecs/backend"
+  retention_in_days = 7
+}
+
 data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
