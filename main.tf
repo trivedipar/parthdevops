@@ -297,50 +297,75 @@ resource "aws_cloudwatch_log_group" "backend_log_group" {
   retention_in_days = 7
 }
 
+# ECR Repository
+resource "aws_ecr_repository" "frontend_repo" {
+  name = "frontend"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "frontend-repo"
+  }
+}
+
+resource "aws_ecr_repository" "backend_repo" {
+  name = "backend"
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "backend-repo"
+  }
+}
+
 data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
   vars = {
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
-    aws_region = var.aws_region
-    aws_account_id = var.aws_account_id
+    AWS_ACCOUNT_ID = var.aws_account_id
+    AWS_REGION = var.aws_region
   }
 }
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
-  family                   = "my-ecs-task"
-  container_definitions    = data.template_file.container_definitions.rendered
+  family = "my-ecs-task"
+  container_definitions = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "512"  # Increase task CPU
-  memory                   = "1024"  # Increase task memory
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  network_mode = "awsvpc"
+  cpu = "512"  # Increase task CPU
+  memory = "1024"  # Increase task memory
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 }
 
 # ECS Service
 resource "aws_ecs_service" "service" {
-  name            = "my-ecs-service"
-  cluster         = aws_ecs_cluster.cluster.id
+  name = "my-ecs-service"
+  cluster = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"  # Ensure Fargate launch type
+  desired_count = 2
+  launch_type = "FARGATE"  # Ensure Fargate launch type
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.ecs_sg.id]
+    subnets = aws_subnet.private[*].id
+    security_groups = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.frontend.arn
-    container_name   = "frontend"
-    container_port   = 80
+    container_name = "frontend"
+    container_port = 80
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 5000
+    container_name = "backend"
+    container_port = 5000
   }
 }
 
