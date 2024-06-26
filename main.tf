@@ -228,7 +228,7 @@ data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
   vars = {
-    react_app_api_service_url = "http://${aws_lb.frontend.dns_name}"
+    REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
     database_url = "mongodb://${aws_lb.backend.dns_name}:27017/"
   }
 }
