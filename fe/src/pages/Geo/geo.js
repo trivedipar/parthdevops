@@ -3,7 +3,7 @@ import { Map, Marker } from "pigeon-maps";
 import { withStyles } from "@material-ui/core/styles";
 import useGeolocation from "./useGeolocation";
 
-const apiUrl = process.env.REACT_APP_API_URL;
+const apiUrl = process.env.BACKEND_SERVICE_URL;
 
 const styles = (theme) => ({
   root: {
