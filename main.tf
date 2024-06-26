@@ -404,6 +404,7 @@ data "template_file" "container_definitions" {
 
   vars = {
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
+    BACKEND_SERVICE_URL = "http://${aws_lb.backend.dns_name}"
     AWS_ACCOUNT_ID = var.aws_account_id
     AWS_REGION = var.aws_region
   }
@@ -452,4 +453,8 @@ resource "aws_ecs_service" "service" {
 
 output "REACT_APP_API_SERVICE_URL" {
   value = aws_lb.frontend.dns_name
+}
+
+output "BACKEND_SERVICE_URL" {
+  value = aws_lb.backend.dns_name
 }
