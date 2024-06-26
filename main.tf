@@ -455,6 +455,6 @@ output "REACT_APP_API_SERVICE_URL" {
   value = aws_lb.frontend.dns_name
 }
 
-output "BACKEND_SERVICE_URL" {
+output "REACT_APP_BACKEND_SERVICE_URL" {
   value = aws_lb.backend.dns_name
 }
