@@ -229,7 +229,6 @@ data "template_file" "container_definitions" {
 
   vars = {
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
-    database_url = "mongodb://${aws_lb.backend.dns_name}:27017/"
   }
 }
 
@@ -272,8 +271,4 @@ resource "aws_ecs_service" "service" {
 
 output "REACT_APP_API_SERVICE_URL" {
   value = aws_lb.frontend.dns_name
-}
-
-output "backend_url" {
-  value = aws_lb.backend.dns_name
 }
