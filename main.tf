@@ -86,6 +86,13 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port   = 0
     to_port     = 0
@@ -96,6 +103,28 @@ resource "aws_security_group" "ecs_sg" {
   tags = {
     Name = "ecs-security-group"
   }
+}
+
+# VPC Endpoint for ECR
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.aws_region}.ecr.api"
+  subnet_ids   = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.ecs_sg.id]
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  subnet_ids   = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.ecs_sg.id]
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.aws_region}.logs"
+  subnet_ids   = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.ecs_sg.id]
 }
 
 # Load Balancer
@@ -209,13 +238,13 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole-unique-2"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17"
+    Version = "2012-10-17",
     Statement = [
       {
-        Effect = "Allow"
+        Effect = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
-        }
+        },
         Action = "sts:AssumeRole"
       }
     ]
@@ -236,7 +265,8 @@ resource "aws_iam_policy" "ecs_task_execution_policy" {
         Action = [
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage",
-          "ecr:BatchCheckLayerAvailability"
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetAuthorizationToken"
         ],
         Resource = "*"
       },
@@ -334,39 +364,44 @@ data "template_file" "container_definitions" {
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
-  family = "my-ecs-task"
-  container_definitions = data.template_file.container_definitions.rendered
+  family                   = "my-ecs-task"
+  container_definitions    = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
-  network_mode = "awsvpc"
-  cpu = "512"  # Increase task CPU
-  memory = "1024"  # Increase task memory
-  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
+  network_mode             = "awsvpc"
+  cpu                      = "512"
+  memory                   = "1024"
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
 
 # ECS Service
 resource "aws_ecs_service" "service" {
-  name = "my-ecs-service"
-  cluster = aws_ecs_cluster.cluster.id
+  name            = "my-ecs-service"
+  cluster         = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
-  desired_count = 2
-  launch_type = "FARGATE"  # Ensure Fargate launch type
+  desired_count   = 2
+  launch_type     = "FARGATE"  # Ensure Fargate launch type
 
   network_configuration {
-    subnets = aws_subnet.private[*].id
-    security_groups = [aws_security_group.ecs_sg.id]
+    subnets          = aws_subnet.private[*].id
+    security_groups  = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.frontend.arn
-    container_name = "frontend"
-    container_port = 80
+    container_name   = "frontend"
+    container_port   = 80
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
-    container_name = "backend"
-    container_port = 5000
+    container_name   = "backend"
+    container_port   = 5000
   }
+
+  depends_on = [
+    aws_lb_listener.frontend,
+    aws_lb_listener.backend
+  ]
 }
 
 output "REACT_APP_API_SERVICE_URL" {
