@@ -38,8 +38,7 @@ jobs:
       - name: Get frontend URL
         id: get-frontend-url
         run: |
-          frontend_url=$(terraform output -raw REACT_APP_API_SERVICE_URL)
-          echo "REACT_APP_API_SERVICE_URL=${frontend_url}" >> $GITHUB_ENV
+          echo "REACT_APP_API_SERVICE_URL=$(terraform output -raw REACT_APP_API_SERVICE_URL)" >> $GITHUB_ENV
         working-directory: .
 
       - name: Debug URLs
