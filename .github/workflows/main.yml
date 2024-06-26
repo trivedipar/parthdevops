@@ -39,15 +39,23 @@ jobs:
         id: get-frontend-url
         run: |
           frontend_url=$(terraform output -raw REACT_APP_API_SERVICE_URL)
-          echo "REACT_APP_API_SERVICE_URL=$frontend_url" >> $GITHUB_ENV
+          echo "REACT_APP_API_SERVICE_URL=${frontend_url}" >> $GITHUB_ENV
         working-directory: .
 
       - name: Get backend URL
         id: get-backend-url
         run: |
           backend_url=$(terraform output -raw backend_url)
-          echo "DATABASE_URL=$backend_url" >> $GITHUB_ENV
+          echo "DATABASE_URL=${backend_url}" >> $GITHUB_ENV
         working-directory: .
+
+      - name: Debug URLs
+        run: |
+          echo "Frontend URL: $REACT_APP_API_SERVICE_URL"
+          echo "Backend URL: $DATABASE_URL"
+        env:
+          REACT_APP_API_SERVICE_URL: ${{ env.REACT_APP_API_SERVICE_URL }}
+          DATABASE_URL: ${{ env.DATABASE_URL }}
 
   build-and-deploy:
     runs-on: ubuntu-latest
