@@ -79,6 +79,13 @@ resource "aws_security_group" "ecs_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  ingress {
+    from_port = 5000
+    to_port = 5000
+    protocol = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
   egress {
     from_port = 0
     to_port = 0
@@ -151,7 +158,7 @@ resource "aws_lb_target_group" "backend" {
   target_type = "ip"  # Set target type to IP
 
   health_check {
-    path = "/api/health"
+    path = "/health"
     port = "5000"
     protocol = "HTTP"
     interval = 30
