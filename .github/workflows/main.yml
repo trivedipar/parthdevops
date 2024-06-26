@@ -95,6 +95,7 @@ jobs:
       - name: Build, tag, and push Frontend image
         env:
           REACT_APP_API_SERVICE_URL: ${{ env.REACT_APP_API_SERVICE_URL }}
+          REACT_APP_BACKEND_SERVICE_URL: ${{ env.REACT_APP_BACKEND_SERVICE_URL }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
