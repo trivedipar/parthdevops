@@ -241,6 +241,15 @@ resource "aws_cloudwatch_log_group" "backend_log_group" {
   retention_in_days = 7
 }
 
+# Create ECR repositories
+resource "aws_ecr_repository" "frontend" {
+  name = "frontend"
+}
+
+resource "aws_ecr_repository" "backend" {
+  name = "backend"
+}
+
 data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
