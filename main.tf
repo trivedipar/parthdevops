@@ -47,6 +47,23 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
+# NAT Gateway
+resource "aws_eip" "nat" {
+  count = 1
+  vpc = true
+  tags = {
+    Name = "main-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat[0].id
+  subnet_id     = aws_subnet.public[0].id
+  tags = {
+    Name = "main-nat-gateway"
+  }
+}
+
 # Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -61,11 +78,30 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Associate Route Table with Public Subnets
-resource "aws_route_table_association" "a" {
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "private-route-table"
+  }
+}
+
+# Associate Route Table with Subnets
+resource "aws_route_table_association" "public" {
   count = 3
   subnet_id = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count = 3
+  subnet_id = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }
 
 # Security Group
@@ -140,7 +176,7 @@ resource "aws_lb_target_group" "frontend" {
   port       = 80
   protocol   = "HTTP"
   vpc_id     = aws_vpc.main.id
-  target_type = "ip"  # Set target type to IP
+  target_type = "ip"
 
   health_check {
     path                = "/"
@@ -162,7 +198,7 @@ resource "aws_lb_target_group" "backend" {
   port       = 5000
   protocol   = "HTTP"
   vpc_id     = aws_vpc.main.id
-  target_type = "ip"  # Set target type to IP
+  target_type = "ip"
 
   health_check {
     path                = "/health"
@@ -216,13 +252,13 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   name = "ecsTaskExecutionRole-unique-2"
 
   assume_role_policy = jsonencode({
-    Version = "2012-10-17",
+    Version = "2012-10-17"
     Statement = [
       {
         Effect = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
-        }
+        },
         Action = "sts:AssumeRole"
       }
     ]
@@ -233,10 +269,8 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   }
 }
 
-resource "aws_iam_role_policy" "ecs_task_execution_policy" {
+resource "aws_iam_policy" "ecs_task_execution_policy" {
   name = "ecsTaskExecutionPolicy-unique-2"
-  role = aws_iam_role.ecs_task_execution_role.name
-
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -246,21 +280,9 @@ resource "aws_iam_role_policy" "ecs_task_execution_policy" {
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage",
           "ecr:BatchCheckLayerAvailability",
-          "ecr:GetAuthorizationToken"
-        ],
-        Resource = "*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
+          "ecr:GetAuthorizationToken",
           "logs:CreateLogStream",
-          "logs:PutLogEvents"
-        ],
-        Resource = "*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
+          "logs:PutLogEvents",
           "ecs:StartTelemetrySession",
           "ecs:CreateCluster",
           "ecs:DeregisterContainerInstance",
@@ -269,13 +291,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_policy" {
           "ecs:Poll",
           "ecs:UpdateContainerInstancesState",
           "ecs:SubmitContainerStateChange",
-          "ecs:DiscoverPollEndpoint"
-        ],
-        Resource = "*"
-      },
-      {
-        Effect = "Allow",
-        Action = [
+          "ecs:DiscoverPollEndpoint",
           "ec2:AuthorizeSecurityGroupIngress",
           "ec2:Describe*",
           "ec2:AttachNetworkInterface",
@@ -284,7 +300,9 @@ resource "aws_iam_role_policy" "ecs_task_execution_policy" {
           "ec2:DetachNetworkInterface",
           "ec2:ModifyNetworkInterfaceAttribute",
           "ec2:AssignPrivateIpAddresses",
-          "ec2:UnassignPrivateIpAddresses"
+          "ec2:UnassignPrivateIpAddresses",
+          "secretsmanager:GetSecretValue",
+          "ssm:GetParameters"
         ],
         Resource = "*"
       }
@@ -294,7 +312,7 @@ resource "aws_iam_role_policy" "ecs_task_execution_policy" {
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+  policy_arn = aws_iam_policy.ecs_task_execution_policy.arn
 }
 
 resource "aws_cloudwatch_log_group" "frontend_log_group" {
@@ -332,13 +350,12 @@ resource "aws_ecr_repository" "backend_repo" {
   }
 }
 
-# VPC Endpoint for ECR
+# VPC Endpoints for ECR and other services
 resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.aws_region}.ecr.api"
-  vpc_endpoint_type = "Interface"
-  subnet_ids   = aws_subnet.private[*].id
-
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = aws_subnet.private[*].id
   security_group_ids = [aws_security_group.ecs_sg.id]
 
   tags = {
@@ -347,11 +364,10 @@ resource "aws_vpc_endpoint" "ecr_api" {
 }
 
 resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.aws_region}.ecr.dkr"
-  vpc_endpoint_type = "Interface"
-  subnet_ids   = aws_subnet.private[*].id
-
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = aws_subnet.private[*].id
   security_group_ids = [aws_security_group.ecs_sg.id]
 
   tags = {
@@ -360,15 +376,26 @@ resource "aws_vpc_endpoint" "ecr_dkr" {
 }
 
 resource "aws_vpc_endpoint" "logs" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.aws_region}.logs"
-  vpc_endpoint_type = "Interface"
-  subnet_ids   = aws_subnet.private[*].id
-
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = aws_subnet.private[*].id
   security_group_ids = [aws_security_group.ecs_sg.id]
 
   tags = {
     Name = "logs-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ssm" {
+  vpc_id             = aws_vpc.main.id
+  service_name       = "com.amazonaws.${var.aws_region}.ssm"
+  vpc_endpoint_type  = "Interface"
+  subnet_ids         = aws_subnet.private[*].id
+  security_group_ids = [aws_security_group.ecs_sg.id]
+
+  tags = {
+    Name = "ssm-endpoint"
   }
 }
 
@@ -388,8 +415,8 @@ resource "aws_ecs_task_definition" "task" {
   container_definitions = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
   network_mode = "awsvpc"
-  cpu = "512"  # Increase task CPU
-  memory = "1024"  # Increase task memory
+  cpu = "512"
+  memory = "1024"
   execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 }
 
@@ -399,11 +426,12 @@ resource "aws_ecs_service" "service" {
   cluster = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
   desired_count = 2
-  launch_type = "FARGATE"  # Ensure Fargate launch type
+  launch_type = "FARGATE"
 
   network_configuration {
     subnets = aws_subnet.private[*].id
     security_groups = [aws_security_group.ecs_sg.id]
+    assign_public_ip = true
   }
 
   load_balancer {
@@ -417,6 +445,9 @@ resource "aws_ecs_service" "service" {
     container_name = "backend"
     container_port = 5000
   }
+
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent = 200
 }
 
 output "REACT_APP_API_SERVICE_URL" {
