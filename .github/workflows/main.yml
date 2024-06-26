@@ -36,13 +36,17 @@ jobs:
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
       - name: Get frontend URL
-        id: frontend-url
-        run: echo "REACT_APP_API_SERVICE_URL=$(terraform output -raw REACT_APP_API_SERVICE_URL)" >> $GITHUB_ENV
+        id: get-frontend-url
+        run: |
+          frontend_url=$(terraform output -raw REACT_APP_API_SERVICE_URL)
+          echo "REACT_APP_API_SERVICE_URL=$frontend_url" >> $GITHUB_ENV
         working-directory: .
 
       - name: Get backend URL
-        id: backend-url
-        run: echo "DATABASE_URL=$(terraform output -raw backend_url)" >> $GITHUB_ENV
+        id: get-backend-url
+        run: |
+          backend_url=$(terraform output -raw backend_url)
+          echo "DATABASE_URL=$backend_url" >> $GITHUB_ENV
         working-directory: .
 
   build-and-deploy:
