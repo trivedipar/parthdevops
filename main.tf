@@ -73,23 +73,23 @@ resource "aws_security_group" "ecs_sg" {
   vpc_id = aws_vpc.main.id
 
   ingress {
-    from_port = 80
-    to_port = 80
-    protocol = "tcp"
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port = 5000
-    to_port = 5000
-    protocol = "tcp"
+    from_port   = 5000
+    to_port     = 5000
+    protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
-    from_port = 0
-    to_port = 0
-    protocol = "-1"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -100,11 +100,11 @@ resource "aws_security_group" "ecs_sg" {
 
 # Load Balancer
 resource "aws_lb" "frontend" {
-  name = "frontend-alb-unique-2"
-  internal = false
+  name               = "frontend-alb-unique-2"
+  internal           = false
   load_balancer_type = "application"
-  security_groups = [aws_security_group.ecs_sg.id]
-  subnets = aws_subnet.public[*].id
+  security_groups    = [aws_security_group.ecs_sg.id]
+  subnets            = aws_subnet.public[*].id
 
   enable_deletion_protection = false
 
@@ -114,11 +114,11 @@ resource "aws_lb" "frontend" {
 }
 
 resource "aws_lb" "backend" {
-  name = "backend-alb-unique-2"
-  internal = false
+  name               = "backend-alb-unique-2"
+  internal           = false
   load_balancer_type = "application"
-  security_groups = [aws_security_group.ecs_sg.id]
-  subnets = aws_subnet.public[*].id
+  security_groups    = [aws_security_group.ecs_sg.id]
+  subnets            = aws_subnet.public[*].id
 
   enable_deletion_protection = false
 
@@ -129,19 +129,19 @@ resource "aws_lb" "backend" {
 
 # Target Groups
 resource "aws_lb_target_group" "frontend" {
-  name = "frontend-tg-unique-2"
-  port = 80
-  protocol = "HTTP"
-  vpc_id = aws_vpc.main.id
+  name       = "frontend-tg-unique-2"
+  port       = 80
+  protocol   = "HTTP"
+  vpc_id     = aws_vpc.main.id
   target_type = "ip"  # Set target type to IP
 
   health_check {
-    path = "/"
-    port = "80"
-    protocol = "HTTP"
-    interval = 30
-    timeout = 5
-    healthy_threshold = 2
+    path                = "/"
+    port                = "80"
+    protocol            = "HTTP"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
     unhealthy_threshold = 2
   }
 
@@ -151,19 +151,19 @@ resource "aws_lb_target_group" "frontend" {
 }
 
 resource "aws_lb_target_group" "backend" {
-  name = "backend-tg-unique-2"
-  port = 5000
-  protocol = "HTTP"
-  vpc_id = aws_vpc.main.id
+  name       = "backend-tg-unique-2"
+  port       = 5000
+  protocol   = "HTTP"
+  vpc_id     = aws_vpc.main.id
   target_type = "ip"  # Set target type to IP
 
   health_check {
-    path = "/health"
-    port = "5000"
-    protocol = "HTTP"
-    interval = 30
-    timeout = 5
-    healthy_threshold = 2
+    path                = "/health"
+    port                = "5000"
+    protocol            = "HTTP"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
     unhealthy_threshold = 2
   }
 
@@ -175,22 +175,22 @@ resource "aws_lb_target_group" "backend" {
 # Listeners
 resource "aws_lb_listener" "frontend" {
   load_balancer_arn = aws_lb.frontend.arn
-  port = "80"
-  protocol = "HTTP"
+  port              = "80"
+  protocol          = "HTTP"
 
   default_action {
-    type = "forward"
+    type             = "forward"
     target_group_arn = aws_lb_target_group.frontend.arn
   }
 }
 
 resource "aws_lb_listener" "backend" {
   load_balancer_arn = aws_lb.backend.arn
-  port = "80"
-  protocol = "HTTP"
+  port              = "80"
+  protocol          = "HTTP"
 
   default_action {
-    type = "forward"
+    type             = "forward"
     target_group_arn = aws_lb_target_group.backend.arn
   }
 }
@@ -302,6 +302,7 @@ data "template_file" "container_definitions" {
 
   vars = {
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
+    AWS_ACCOUNT_ID = var.aws_account_id
   }
 }
 
@@ -311,8 +312,8 @@ resource "aws_ecs_task_definition" "task" {
   container_definitions    = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
   network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
+  cpu                      = "512"  # Increase task CPU
+  memory                   = "1024"  # Increase task memory
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
 }
 
@@ -322,12 +323,11 @@ resource "aws_ecs_service" "service" {
   cluster         = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
   desired_count   = 2
-  launch_type     = "FARGATE"
+  launch_type     = "FARGATE"  # Ensure Fargate launch type
 
   network_configuration {
     subnets          = aws_subnet.private[*].id
     security_groups  = [aws_security_group.ecs_sg.id]
-    assign_public_ip = true
   }
 
   load_balancer {
@@ -340,23 +340,6 @@ resource "aws_ecs_service" "service" {
     target_group_arn = aws_lb_target_group.backend.arn
     container_name   = "backend"
     container_port   = 5000
-  }
-}
-
-# ECR Repository
-resource "aws_ecr_repository" "frontend" {
-  name = "frontend"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-}
-
-resource "aws_ecr_repository" "backend" {
-  name = "backend"
-
-  image_scanning_configuration {
-    scan_on_push = true
   }
 }
 
