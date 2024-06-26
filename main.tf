@@ -47,23 +47,6 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# NAT Gateway
-resource "aws_eip" "nat" {
-  count = 1
-  vpc = true
-  tags = {
-    Name = "main-nat-eip"
-  }
-}
-
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id
-  tags = {
-    Name = "main-nat-gateway"
-  }
-}
-
 # Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -78,30 +61,11 @@ resource "aws_route_table" "public" {
   }
 }
 
-resource "aws_route_table" "private" {
-  vpc_id = aws_vpc.main.id
-
-  route {
-    cidr_block = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
-  }
-
-  tags = {
-    Name = "private-route-table"
-  }
-}
-
-# Associate Route Table with Subnets
-resource "aws_route_table_association" "public" {
+# Associate Route Table with Public Subnets
+resource "aws_route_table_association" "a" {
   count = 3
   subnet_id = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
-}
-
-resource "aws_route_table_association" "private" {
-  count = 3
-  subnet_id = aws_subnet.private[count.index].id
-  route_table_id = aws_route_table.private.id
 }
 
 # Security Group
@@ -116,15 +80,15 @@ resource "aws_security_group" "ecs_sg" {
   }
 
   ingress {
-    from_port   = 5000
-    to_port     = 5000
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 443
-    to_port     = 443
+    from_port   = 5000
+    to_port     = 5000
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -176,7 +140,7 @@ resource "aws_lb_target_group" "frontend" {
   port       = 80
   protocol   = "HTTP"
   vpc_id     = aws_vpc.main.id
-  target_type = "ip"
+  target_type = "ip"  # Set target type to IP
 
   health_check {
     path                = "/"
@@ -198,7 +162,7 @@ resource "aws_lb_target_group" "backend" {
   port       = 5000
   protocol   = "HTTP"
   vpc_id     = aws_vpc.main.id
-  target_type = "ip"
+  target_type = "ip"  # Set target type to IP
 
   health_check {
     path                = "/health"
@@ -258,7 +222,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
         Effect = "Allow",
         Principal = {
           Service = "ecs-tasks.amazonaws.com"
-        },
+        }
         Action = "sts:AssumeRole"
       }
     ]
@@ -269,8 +233,10 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   }
 }
 
-resource "aws_iam_policy" "ecs_task_execution_policy" {
+resource "aws_iam_role_policy" "ecs_task_execution_policy" {
   name = "ecsTaskExecutionPolicy-unique-2"
+  role = aws_iam_role.ecs_task_execution_role.name
+
   policy = jsonencode({
     Version = "2012-10-17",
     Statement = [
@@ -279,7 +245,8 @@ resource "aws_iam_policy" "ecs_task_execution_policy" {
         Action = [
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage",
-          "ecr:BatchCheckLayerAvailability"
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetAuthorizationToken"
         ],
         Resource = "*"
       },
@@ -327,10 +294,9 @@ resource "aws_iam_policy" "ecs_task_execution_policy" {
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = aws_iam_policy.ecs_task_execution_policy.arn
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
 }
 
-# CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "frontend_log_group" {
   name = "/ecs/frontend"
   retention_in_days = 7
@@ -363,6 +329,46 @@ resource "aws_ecr_repository" "backend_repo" {
 
   tags = {
     Name = "backend-repo"
+  }
+}
+
+# VPC Endpoint for ECR
+resource "aws_vpc_endpoint" "ecr_api" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.aws_region}.ecr.api"
+  vpc_endpoint_type = "Interface"
+  subnet_ids   = aws_subnet.private[*].id
+
+  security_group_ids = [aws_security_group.ecs_sg.id]
+
+  tags = {
+    Name = "ecr-api-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "ecr_dkr" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.aws_region}.ecr.dkr"
+  vpc_endpoint_type = "Interface"
+  subnet_ids   = aws_subnet.private[*].id
+
+  security_group_ids = [aws_security_group.ecs_sg.id]
+
+  tags = {
+    Name = "ecr-dkr-endpoint"
+  }
+}
+
+resource "aws_vpc_endpoint" "logs" {
+  vpc_id       = aws_vpc.main.id
+  service_name = "com.amazonaws.${var.aws_region}.logs"
+  vpc_endpoint_type = "Interface"
+  subnet_ids   = aws_subnet.private[*].id
+
+  security_group_ids = [aws_security_group.ecs_sg.id]
+
+  tags = {
+    Name = "logs-endpoint"
   }
 }
 
