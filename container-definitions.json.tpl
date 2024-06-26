@@ -40,8 +40,8 @@
     ],
     "environment": [
       {
-        "name": "BACKEND_SERVICE_URL",
-        "value": "${BACKEND_SERVICE_URL}"
+        "name": "REACT_APP_BACKEND_SERVICE_URL",
+        "value": "${REACT_APP_BACKEND_SERVICE_URL}"
       },
       {
         "name": "REDIS_HOST",
