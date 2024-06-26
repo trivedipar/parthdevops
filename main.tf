@@ -2,6 +2,16 @@ provider "aws" {
   region = var.aws_region
 }
 
+variable "aws_region" {
+  description = "The AWS region to deploy to"
+  default     = "us-east-2"
+}
+
+variable "aws_account_id" {
+  description = "The AWS Account ID"
+  type        = string
+}
+
 # VPC
 resource "aws_vpc" "main" {
   cidr_block           = "10.0.0.0/16"
@@ -254,6 +264,8 @@ data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
   vars = {
+    aws_account_id = var.aws_account_id
+    aws_region     = var.aws_region
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
   }
 }
