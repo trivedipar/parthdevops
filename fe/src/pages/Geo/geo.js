@@ -32,9 +32,17 @@ function GeoLocation(props) {
   const [users, setUsers] = useState({ user1: {}, user2: {}, user3: {} });
   const [userPrime, setUserPrime] = useState(null);
 
+   // Fetch user info only on initial load
   useEffect(() => {
-
-  }, []);
+    fetch(`${apiUrl}/get_user_info`)
+      .then(response => response.json())
+      .then(data => {
+        if (data.isLoggedIn) {
+          setUserPrime(data.username);
+        }
+      })
+      .catch(error => console.error('Error fetching user data:', error));
+  }, []); // Empty dependency array makes this effect run only on initial render
 
   useEffect(() => {
     let watchId;
@@ -47,31 +55,21 @@ function GeoLocation(props) {
           setHeading(heading);
           setSpeed(speed);
 
-          try {
-            fetch(`${apiUrl}/get_user_info`)
-            .then(response => response.json())
-            .then(data => {
-              if (data.isLoggedIn) {
-                setUserPrime(data.username);
-                fetch(`${apiUrl}/set-location`, {
-                  method: "POST",
-                  headers: {
-                    "Content-Type": "application/json",
-                  },
-                  body: JSON.stringify({
-                    user_id: data.username,  // Use userPrime for the user_id if needed
-                    latitude: latitude,
-                    longitude: longitude,
-                    heading: heading,
-                    speed: speed,
-                  }),
-                });
-              }
-            })
-            .catch(error => console.error('Error fetching user data:', error));
-           
-          } catch (error) {
-            console.error("Error setting user location:", error);
+          // Post user location only when user is logged in
+          if (userPrime) {
+            fetch(`${apiUrl}/set-location`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                user_id: userPrime,
+                latitude: latitude,
+                longitude: longitude,
+                heading: heading,
+                speed: speed,
+              }),
+            }).catch(error => console.error("Error setting user location:", error));
           }
         },
         (e) => {
@@ -87,15 +85,14 @@ function GeoLocation(props) {
         navigator.geolocation.clearWatch(watchId);
       }
     };
-  }, [userPrime]);  // Ensure watchPosition updates if userPrime changes
-
+  }, [userPrime]); 
   useEffect(() => {
     const fetchUserLocation = async (userId) => {
       try {
         if (userId === userPrime) {
           return {};
         }
-
+        console.log(`This is the backend url- ${apiUrl}`);
         const response = await fetch(`${apiUrl}/get-location/${userId}`);
         const data = await response.json();
         return { [userId]: data };
@@ -125,7 +122,7 @@ function GeoLocation(props) {
   return (
     <div style={{ backgroundColor: "white", padding: 72 }}>
       <h1>Coordinates</h1>
-      <h4>Pratik you are  {userPrime}</h4>
+      <h4>Welcome you are  {userPrime}</h4>
       {lat !== null && <p>Latitude: {lat}</p>}
       {lng !== null && <p>Longitude: {lng}</p>}
       {heading !== null && <p>Heading: {heading}</p>}
