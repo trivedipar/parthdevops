@@ -302,7 +302,8 @@ data "template_file" "container_definitions" {
 
   vars = {
     REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
-    AWS_ACCOUNT_ID = var.aws_account_id
+    aws_region = var.aws_region
+    aws_account_id = var.aws_account_id
   }
 }
 
