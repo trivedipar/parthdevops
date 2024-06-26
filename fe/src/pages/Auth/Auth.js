@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import axios from 'axios';
 import './AuthPage.css'; // Import your CSS file for styling
 
-const apiUrl = process.env.BACKEND_SERVICE_URL;
+const apiUrl = process.env.REACT_APP_BACKEND_SERVICE_URL;
 
 const AuthPage = () => {
   const [username, setUsername] = useState('');
