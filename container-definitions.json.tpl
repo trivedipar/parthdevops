@@ -40,6 +40,10 @@
     ],
     "environment": [
       {
+        "name": "BACKEND_SERVICE_URL",
+        "value": "${BACKEND_SERVICE_URL}"
+      },
+      {
         "name": "REDIS_HOST",
         "value": "redis-19369.c11.us-east-1-3.ec2.redns.redis-cloud.com"
       },
