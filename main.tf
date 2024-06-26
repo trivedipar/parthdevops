@@ -47,6 +47,23 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
+# NAT Gateway
+resource "aws_eip" "nat" {
+  count = 1
+  vpc = true
+  tags = {
+    Name = "main-nat-eip"
+  }
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat[0].id
+  subnet_id     = aws_subnet.public[0].id
+  tags = {
+    Name = "main-nat-gateway"
+  }
+}
+
 # Route Table
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main.id
@@ -61,11 +78,30 @@ resource "aws_route_table" "public" {
   }
 }
 
-# Associate Route Table with Public Subnets
-resource "aws_route_table_association" "a" {
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main.id
+
+  route {
+    cidr_block = "0.0.0.0/0"
+    nat_gateway_id = aws_nat_gateway.nat.id
+  }
+
+  tags = {
+    Name = "private-route-table"
+  }
+}
+
+# Associate Route Table with Subnets
+resource "aws_route_table_association" "public" {
   count = 3
   subnet_id = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
+}
+
+resource "aws_route_table_association" "private" {
+  count = 3
+  subnet_id = aws_subnet.private[count.index].id
+  route_table_id = aws_route_table.private.id
 }
 
 # Security Group
@@ -105,31 +141,6 @@ resource "aws_security_group" "ecs_sg" {
   }
 }
 
-# VPC Endpoint for ECR
-resource "aws_vpc_endpoint" "ecr_api" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.aws_region}.ecr.api"
-  vpc_endpoint_type = "Interface"
-  subnet_ids   = aws_subnet.private[*].id
-  security_group_ids = [aws_security_group.ecs_sg.id]
-}
-
-resource "aws_vpc_endpoint" "ecr_dkr" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.aws_region}.ecr.dkr"
-  vpc_endpoint_type = "Interface"
-  subnet_ids   = aws_subnet.private[*].id
-  security_group_ids = [aws_security_group.ecs_sg.id]
-}
-
-resource "aws_vpc_endpoint" "logs" {
-  vpc_id       = aws_vpc.main.id
-  service_name = "com.amazonaws.${var.aws_region}.logs"
-  vpc_endpoint_type = "Interface"
-  subnet_ids   = aws_subnet.private[*].id
-  security_group_ids = [aws_security_group.ecs_sg.id]
-}
-
 # Load Balancer
 resource "aws_lb" "frontend" {
   name               = "frontend-alb-unique-2"
@@ -165,7 +176,7 @@ resource "aws_lb_target_group" "frontend" {
   port       = 80
   protocol   = "HTTP"
   vpc_id     = aws_vpc.main.id
-  target_type = "ip"  # Set target type to IP
+  target_type = "ip"
 
   health_check {
     path                = "/"
@@ -187,7 +198,7 @@ resource "aws_lb_target_group" "backend" {
   port       = 5000
   protocol   = "HTTP"
   vpc_id     = aws_vpc.main.id
-  target_type = "ip"  # Set target type to IP
+  target_type = "ip"
 
   health_check {
     path                = "/health"
@@ -258,7 +269,7 @@ resource "aws_iam_role" "ecs_task_execution_role" {
   }
 }
 
-resource "aws_iam_policy" "ecs_task_execution_policy" {
+resource "aws_iam_role_policy" "ecs_task_execution_policy" {
   name = "ecsTaskExecutionPolicy-unique-2"
   policy = jsonencode({
     Version = "2012-10-17",
@@ -268,8 +279,7 @@ resource "aws_iam_policy" "ecs_task_execution_policy" {
         Action = [
           "ecr:GetDownloadUrlForLayer",
           "ecr:BatchGetImage",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetAuthorizationToken"
+          "ecr:BatchCheckLayerAvailability"
         ],
         Resource = "*"
       },
@@ -317,9 +327,10 @@ resource "aws_iam_policy" "ecs_task_execution_policy" {
 
 resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
   role       = aws_iam_role.ecs_task_execution_role.name
-  policy_arn = aws_iam_policy.ecs_task_execution_policy.arn
+  policy_arn = aws_iam_role_policy.ecs_task_execution_policy.arn
 }
 
+# CloudWatch Log Groups
 resource "aws_cloudwatch_log_group" "frontend_log_group" {
   name = "/ecs/frontend"
   retention_in_days = 7
@@ -367,44 +378,39 @@ data "template_file" "container_definitions" {
 
 # ECS Task Definition
 resource "aws_ecs_task_definition" "task" {
-  family                   = "my-ecs-task"
-  container_definitions    = data.template_file.container_definitions.rendered
+  family = "my-ecs-task"
+  container_definitions = data.template_file.container_definitions.rendered
   requires_compatibilities = ["FARGATE"]
-  network_mode             = "awsvpc"
-  cpu                      = "512"
-  memory                   = "1024"
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  network_mode = "awsvpc"
+  cpu = "512"  # Increase task CPU
+  memory = "1024"  # Increase task memory
+  execution_role_arn = aws_iam_role.ecs_task_execution_role.arn
 }
 
 # ECS Service
 resource "aws_ecs_service" "service" {
-  name            = "my-ecs-service"
-  cluster         = aws_ecs_cluster.cluster.id
+  name = "my-ecs-service"
+  cluster = aws_ecs_cluster.cluster.id
   task_definition = aws_ecs_task_definition.task.arn
-  desired_count   = 2
-  launch_type     = "FARGATE"  # Ensure Fargate launch type
+  desired_count = 2
+  launch_type = "FARGATE"  # Ensure Fargate launch type
 
   network_configuration {
-    subnets          = aws_subnet.private[*].id
-    security_groups  = [aws_security_group.ecs_sg.id]
+    subnets = aws_subnet.private[*].id
+    security_groups = [aws_security_group.ecs_sg.id]
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.frontend.arn
-    container_name   = "frontend"
-    container_port   = 80
+    container_name = "frontend"
+    container_port = 80
   }
 
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
-    container_name   = "backend"
-    container_port   = 5000
+    container_name = "backend"
+    container_port = 5000
   }
-
-  depends_on = [
-    aws_lb_listener.frontend,
-    aws_lb_listener.backend
-  ]
 }
 
 output "REACT_APP_API_SERVICE_URL" {
