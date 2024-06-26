@@ -205,27 +205,6 @@ resource "aws_ecs_cluster" "cluster" {
 }
 
 # IAM Role for ECS Task Execution
-resource "aws_iam_role" "ecs_task_execution_role" {
-  name = "ecsTaskExecutionRole-unique-2"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "ecs-tasks.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
-      }
-    ]
-  })
-
-  tags = {
-    Name = "ecs-task-execution-role-unique-2"
-  }
-}
-
 resource "aws_iam_policy" "ecs_task_execution_policy" {
   name = "ecsTaskExecutionPolicy-unique-2"
   policy = jsonencode({
