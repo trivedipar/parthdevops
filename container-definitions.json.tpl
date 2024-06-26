@@ -1,7 +1,7 @@
 [
   {
     "name": "frontend",
-    "image": "frontend:latest",
+    "image": "${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com/frontend:latest",
     "memory": 512,
     "cpu": 256,
     "essential": true,
@@ -21,14 +21,14 @@
       "logDriver": "awslogs",
       "options": {
         "awslogs-group": "/ecs/frontend",
-        "awslogs-region": "us-east-2",
+        "awslogs-region": "${aws_region}",
         "awslogs-stream-prefix": "ecs"
       }
     }
   },
   {
     "name": "backend",
-    "image": "backend:latest",
+    "image": "${aws_account_id}.dkr.ecr.${aws_region}.amazonaws.com/backend:latest",
     "memory": 512,
     "cpu": 256,
     "essential": true,
@@ -56,7 +56,7 @@
       "logDriver": "awslogs",
       "options": {
         "awslogs-group": "/ecs/backend",
-        "awslogs-region": "us-east-2",
+        "awslogs-region": "${aws_region}",
         "awslogs-stream-prefix": "ecs"
       }
     }
