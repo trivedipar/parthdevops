@@ -361,6 +361,8 @@ def get_user_info():
             'username': usr,
             'prime_user': session.get('prime_user', False)
         }), 200
+        usr = None # FLush the usr value to null after the information is sent
+        return user_info
     else:
         return jsonify({'isLoggedIn': False}), 200
 
