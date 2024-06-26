@@ -16,7 +16,15 @@
         "name": "REACT_APP_API_SERVICE_URL",
         "value": "${REACT_APP_API_SERVICE_URL}"
       }
-    ]
+    ],
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/frontend",
+        "awslogs-region": "us-east-2",
+        "awslogs-stream-prefix": "ecs"
+      }
+    }
   },
   {
     "name": "backend",
@@ -30,11 +38,13 @@
         "hostPort": 5000
       }
     ],
-    "environment": [
-      {
-        "name": "DATABASE_URL",
-        "value": "${database_url}"
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/backend",
+        "awslogs-region": "us-east-2",
+        "awslogs-stream-prefix": "ecs"
       }
-    ]
+    }
   }
 ]
