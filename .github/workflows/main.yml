@@ -35,13 +35,7 @@ jobs:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-        timeout-minutes: 30  # Add a timeout to ensure it doesn't run indefinitely
-        continue-on-error: true  # Allow the workflow to continue even if apply fails
-
-      - name: Show Terraform Output
-        if: failure()  # Run this step if the previous step fails
-        run: terraform output
-        working-directory: .
+          TF_VAR_aws_account_id: ${{ secrets.AWS_ACCOUNT_ID }}
 
       - name: Get frontend URL
         id: get-frontend-url
