@@ -355,6 +355,7 @@ def fastlogin():
     
 @app.route('/get_user_info')
 def get_user_info():
+    global usr
     if  usr:
         return jsonify({
             'isLoggedIn': True,
