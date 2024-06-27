@@ -22,6 +22,7 @@ jobs:
         uses: hashicorp/setup-terraform@v1
         with:
           terraform_version: 1.0.0
+          terraform_wrapper: false
 
       - name: Terraform Init
         run: terraform init
@@ -40,7 +41,7 @@ jobs:
       - name: Get backend URL
         id: get-backend-url
         run: |
-          backend_url=$(terraform output -raw REACT_APP_BACKEND_SERVICE_URL)
+          backend_url=$(terraform output -raw REACT_APP_BACKEND_SERVICE_URL | tr -d '\n')
           echo "REACT_APP_BACKEND_SERVICE_URL=http://${backend_url}" >> $GITHUB_ENV
         working-directory: .
 
@@ -53,7 +54,7 @@ jobs:
       - name: Get frontend URL
         id: get-frontend-url
         run: |
-          frontend_url=$(terraform output -raw REACT_APP_API_SERVICE_URL)
+          frontend_url=$(terraform output -raw REACT_APP_API_SERVICE_URL | tr -d '\n')
           echo "REACT_APP_API_SERVICE_URL=http://${frontend_url}" >> $GITHUB_ENV
         working-directory: .
 
