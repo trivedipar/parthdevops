@@ -484,7 +484,7 @@ resource "aws_ecs_service" "service" {
 # Route 53
 resource "aws_route53_record" "frontend_devopsgame_me" {
   zone_id = "Z03836211WVIME3I9V26W" # replace with your actual Hosted Zone ID
-  name    = "frontend.devopsgame.me"
+  name    = "devopsgame.me"
   type    = "A"
   alias {
     name                   = aws_lb.frontend.dns_name
