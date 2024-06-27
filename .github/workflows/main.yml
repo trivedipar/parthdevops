@@ -42,7 +42,7 @@ jobs:
         id: get-backend-url
         run: |
           backend_url=$(terraform output -raw REACT_APP_BACKEND_SERVICE_URL | tr -d '\n')
-          echo "REACT_APP_BACKEND_SERVICE_URL=http://${backend_url}" >> $GITHUB_ENV
+          echo "REACT_APP_BACKEND_SERVICE_URL=https://${backend_url}" >> $GITHUB_ENV
         working-directory: .
 
       - name: Debug Backend URL
