@@ -63,14 +63,6 @@ jobs:
         env:
           REACT_APP_API_SERVICE_URL: ${{ env.REACT_APP_API_SERVICE_URL }}
 
-  build-and-deploy:
-    runs-on: ubuntu-latest
-    needs: terraform
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-
       - name: Log in to Amazon ECR
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v1
