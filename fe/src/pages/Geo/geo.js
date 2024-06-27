@@ -32,6 +32,8 @@ function GeoLocation(props) {
   const [users, setUsers] = useState({ user1: {}, user2: {}, user3: {} });
   const [userPrime, setUserPrime] = useState(null);
 
+  console.log(process.env.REACT_APP_BACKEND_SERVICE_URL);
+
    // Fetch user info only on initial load
   useEffect(() => {
     fetch(`${apiUrl}/get_user_info`)
@@ -92,6 +94,9 @@ function GeoLocation(props) {
         if (userId === userPrime) {
           return {};
         }
+
+        console.log("Hello", process.env.REACT_APP_BACKEND_SERVICE_URL);
+        
         console.log(`This is the backend url- ${apiUrl}`);
         const response = await fetch(`${apiUrl}/get-location/${userId}`);
         const data = await response.json();
