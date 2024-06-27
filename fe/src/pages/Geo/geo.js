@@ -36,7 +36,7 @@ function GeoLocation(props) {
 
    // Fetch user info only on initial load
   useEffect(() => {
-    fetch(${apiUrl}/get_user_info)
+    fetch(`${apiUrl}/get_user_info`)
       .then(response => response.json())
       .then(data => {
         if (data.isLoggedIn) {
