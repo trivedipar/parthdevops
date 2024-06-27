@@ -36,22 +36,15 @@ function GeoLocation(props) {
 
    // Fetch user info only on initial load
   useEffect(() => {
-  fetch(`${apiUrl}/get_user_info`, {
-    method: 'GET',    // Method is optional here as GET is the default
-    mode: 'cors',     // Ensures the request includes credentials in a cross-origin request
-    headers: {
-      'Content-Type': 'application/json',  // Optional: Use if your server expects headers
-      // Additional headers can go here as needed
-    }
-  })
-  .then(response => response.json())
-  .then(data => {
-    if (data.isLoggedIn) {
-      setUserPrime(data.username);
-    }
-  })
-  .catch(error => console.error('Error fetching user data:', error));
-}, []);  // Dependency array is empty, indicating this effect runs only on mount
+    fetch(${apiUrl}/get_user_info)
+      .then(response => response.json())
+      .then(data => {
+        if (data.isLoggedIn) {
+          setUserPrime(data.username);
+        }
+      })
+      .catch(error => console.error('Error fetching user data:', error));
+  }, []);  // Dependency array is empty, indicating this effect runs only on mount
  // Empty dependency array makes this effect run only on initial render
 
   useEffect(() => {
