@@ -355,14 +355,14 @@ def fastlogin():
     
 @app.route('/get_user_info')
 def get_user_info():
-    global usr
-    if  usr:
-        return jsonify({
+    global usr  # Ensure that `usr` is accessible and modifiable globally
+    if usr:
+        user_info = jsonify({
             'isLoggedIn': True,
             'username': usr,
             'prime_user': session.get('prime_user', False)
         }), 200
-        usr = None # FLush the usr value to null after the information is sent
+        usr = None  # Flush the usr value to null after the information is sent
         return user_info
     else:
         return jsonify({'isLoggedIn': False}), 200
