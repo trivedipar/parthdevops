@@ -260,7 +260,7 @@ resource "aws_lb_listener" "backend_https" {
   port              = "443"
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = "arn:aws:acm:us-east-2:590183751878:certificate/15d4a145-b43a-4ca7-ac80-05bf52728428"
+  certificate_arn   = "arn:aws:acm:us-east-2:590183751878:certificate/1a615b13-5461-4283-a673-fcb20fa74047"
 
   default_action {
     type             = "forward"
@@ -494,8 +494,8 @@ resource "aws_route53_record" "frontend_devopsgame_me" {
 }
 
 resource "aws_route53_record" "backend_devopsgame_me" {
-  zone_id = "Z03836211WVIME3I9V26W" # replace with your actual Hosted Zone ID
-  name    = "backend.devopsgame.me"
+  zone_id = "Z04143848S673A2LOVBU" # replace with your actual Hosted Zone ID
+  name    = "backenddevops.me"
   type    = "A"
   alias {
     name                   = aws_lb.backend.dns_name
