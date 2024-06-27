@@ -216,10 +216,27 @@ resource "aws_lb_target_group" "backend" {
 }
 
 # Listeners
-resource "aws_lb_listener" "frontend" {
+resource "aws_lb_listener" "frontend_http" {
   load_balancer_arn = aws_lb.frontend.arn
   port              = "80"
   protocol          = "HTTP"
+
+  default_action {
+    type = "redirect"
+    redirect {
+      protocol = "HTTPS"
+      port     = "443"
+      status_code = "HTTP_301"
+    }
+  }
+}
+
+resource "aws_lb_listener" "frontend_https" {
+  load_balancer_arn = aws_lb.frontend.arn
+  port              = "443"
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:us-east-2:590183751878:certificate/15d4a145-b43a-4ca7-ac80-05bf52728428"
 
   default_action {
     type             = "forward"
@@ -403,8 +420,8 @@ data "template_file" "container_definitions" {
   template = file("${path.module}/container-definitions.json.tpl")
 
   vars = {
-    REACT_APP_API_SERVICE_URL = "http://${aws_lb.frontend.dns_name}"
-    REACT_APP_BACKEND_SERVICE_URL = "http://${aws_lb.backend.dns_name}"
+    REACT_APP_API_SERVICE_URL = "https://${aws_lb.frontend.dns_name}"
+    REACT_APP_BACKEND_SERVICE_URL = "https://${aws_lb.backend.dns_name}"
     AWS_ACCOUNT_ID = var.aws_account_id
     AWS_REGION = var.aws_region
   }
@@ -449,6 +466,15 @@ resource "aws_ecs_service" "service" {
 
   deployment_minimum_healthy_percent = 50
   deployment_maximum_percent = 200
+}
+
+# Route 53
+resource "aws_route53_record" "devopsgame_me" {
+  zone_id = "Z03836211WVIME3I9V26W" # replace with your actual Hosted Zone ID
+  name    = "devopsgame.me"
+  type    = "CNAME"
+  ttl     = 300
+  records = [aws_lb.frontend.dns_name]
 }
 
 output "REACT_APP_API_SERVICE_URL" {
