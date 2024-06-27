@@ -482,13 +482,24 @@ resource "aws_ecs_service" "service" {
 }
 
 # Route 53
-resource "aws_route53_record" "devopsgame_me" {
+resource "aws_route53_record" "frontend_devopsgame_me" {
   zone_id = "Z03836211WVIME3I9V26W" # replace with your actual Hosted Zone ID
-  name    = "devopsgame.me"
+  name    = "frontend.devopsgame.me"
   type    = "A"
   alias {
     name                   = aws_lb.frontend.dns_name
     zone_id                = aws_lb.frontend.zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "backend_devopsgame_me" {
+  zone_id = "Z03836211WVIME3I9V26W" # replace with your actual Hosted Zone ID
+  name    = "backend.devopsgame.me"
+  type    = "A"
+  alias {
+    name                   = aws_lb.backend.dns_name
+    zone_id                = aws_lb.backend.zone_id
     evaluate_target_health = true
   }
 }
