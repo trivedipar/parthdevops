@@ -47,22 +47,22 @@ resource "aws_internet_gateway" "igw" {
   }
 }
 
-# NAT Gateway
-resource "aws_eip" "nat" {
-  count = 1
-  vpc = true
-  tags = {
-    Name = "main-nat-eip"
-  }
-}
+# NAT Gateway (Commented out as we reached the limit)
+# resource "aws_eip" "nat" {
+#   count = 1
+#   vpc = true
+#   tags = {
+#     Name = "main-nat-eip"
+#   }
+# }
 
-resource "aws_nat_gateway" "nat" {
-  allocation_id = aws_eip.nat[0].id
-  subnet_id     = aws_subnet.public[0].id
-  tags = {
-    Name = "main-nat-gateway"
-  }
-}
+# resource "aws_nat_gateway" "nat" {
+#   allocation_id = aws_eip.nat[0].id
+#   subnet_id     = aws_subnet.public[0].id
+#   tags = {
+#     Name = "main-nat-gateway"
+#   }
+# }
 
 # Route Table
 resource "aws_route_table" "public" {
@@ -83,7 +83,7 @@ resource "aws_route_table" "private" {
 
   route {
     cidr_block = "0.0.0.0/0"
-    nat_gateway_id = aws_nat_gateway.nat.id
+    gateway_id = aws_internet_gateway.igw.id # Changed from nat_gateway_id
   }
 
   tags = {
@@ -472,9 +472,12 @@ resource "aws_ecs_service" "service" {
 resource "aws_route53_record" "devopsgame_me" {
   zone_id = "Z03836211WVIME3I9V26W" # replace with your actual Hosted Zone ID
   name    = "devopsgame.me"
-  type    = "CNAME"
-  ttl     = 300
-  records = [aws_lb.frontend.dns_name]
+  type    = "A"
+  alias {
+    name                   = aws_lb.frontend.dns_name
+    zone_id                = aws_lb.frontend.zone_id
+    evaluate_target_health = true
+  }
 }
 
 output "REACT_APP_API_SERVICE_URL" {
