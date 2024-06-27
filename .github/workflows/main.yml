@@ -92,6 +92,6 @@ jobs:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: ${{ secrets.AWS_REGION }}
         run: |
-          docker build --no-cache -f ./fe/Dockerfile -t frontend:latest --build-arg NODE_ENV=production --build-arg REACT_APP_BACKEND_SERVICE_URL=https://backend.devopsgame.me ./fe
+          docker build --no-cache -f ./fe/Dockerfile -t frontend:latest --build-arg NODE_ENV=production --build-arg REACT_APP_BACKEND_SERVICE_URL=https://backenddevops.me ./fe
           docker tag frontend:latest $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/frontend:latest
           docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/frontend:latest
